@@ -55,7 +55,7 @@ elseif(LINUX)
 	target_compile_options(${COMMONLIB_NAME} PRIVATE -fPIC -rdynamic)
 	target_compile_options(${COMMONLIB_NAME} PRIVATE -O3) #enable optimization for linux debug
 	
-	install(TARGETS ${COMMONLIB_NAME} RUNTIME DESTINATION ${GUI_BIN_DIR}/shared)
+	install(TARGETS ${COMMONLIB_NAME} LIBRARY DESTINATION ${GUI_BIN_DIR}/shared)
 elseif(APPLE)
 	set(GUI_BIN_DIR ${GUI_BASE_DIR}/Builds/MacOSX/build/)
 	set_target_properties(${COMMONLIB_NAME} PROPERTIES BUNDLE FALSE)
@@ -75,8 +75,10 @@ foreach( src_file IN ITEMS ${SRC_FILES})
 endforeach()
 
 #additional libraries, if needed
-#find_library(EXTERNAL_LIB NAMES libname)
-#target_link_libraries(${COMMONLIB_NAME} ${EXTERNAL_LIB_LIB})
-
-#find_path(EXTERNAL_INCLUDE includefile.h)
-#target_include_directories(${COMMONLIB_NAME} PRIVATE ${EXTERNAL_INCLUDE})
+#find_package(LIBNAME)
+#or
+#find_library(LIBNAME_LIBRARIES NAMES libname)
+#find_path(LIBNAME_INCLUDE_DIRS includefile.h)
+#
+#target_link_libraries(${COMMONLIB_NAME} ${LIBNAME_LIBRARIES})
+#target_include_directories(${COMMONLIB_NAME} PRIVATE ${LIBNAME_INCLUDE_DIRS})
