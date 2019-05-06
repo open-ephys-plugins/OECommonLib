@@ -1,0 +1,14 @@
+# Files and folders to ignore
+
+# 1. intermediate files
+*.o
+*.d
+
+
+# 2. Windows related
+
+CommonLib/Builds/*
+!CommonLib/Builds/CMakeLists.txt
+!CommonLib/Builds/CMAKE_README.txt
+
+
