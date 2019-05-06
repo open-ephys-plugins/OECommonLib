@@ -61,8 +61,9 @@ elseif(APPLE)
 	set_target_properties(${COMMONLIB_NAME} PROPERTIES BUNDLE FALSE)
 	set_property(TARGET ${COMMONLIB_NAME} APPEND_STRING PROPERTY LINK_FLAGS
 	"-undefined dynamic_lookup")
-	
-	install(TARGETS ${COMMONLIB_NAME} RUNTIME DESTINATION ~/Library/Application\ Support/open-ephys/shared)
+
+	install(TARGETS ${COMMONLIB_NAME} DESTINATION $ENV{HOME}/Library/Application\ Support/open-ephys/shared)
+	set(CMAKE_PREFIX_PATH /opt/local)
 endif()
 
 #create filters for vs and xcode
