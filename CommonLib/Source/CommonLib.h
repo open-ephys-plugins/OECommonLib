@@ -2,6 +2,8 @@
 #ifndef COMMONLIB_H_INCLUDED
 #define COMMONLIB_H_INCLUDED
 
+#include <CommonLibHeader.h>
+
 //namespace must be an unique name for your library
 namespace CommonLibrary
 {
@@ -11,7 +13,7 @@ namespace CommonLibrary
 		public: 
 			LibraryClass();
 			~LibraryClass();
-	}
+	};
 }
 
 #endif
