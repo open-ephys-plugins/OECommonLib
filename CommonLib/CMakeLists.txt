@@ -72,7 +72,7 @@ if(MSVC)
 
 	# also install any dependency DLLs
 	install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../libs/bin/${CMAKE_LIBRARY_ARCHITECTURE}/
-		DESTINATION ${GUI_BIN_DIR}/shared)
+		DESTINATION ${GUI_BIN_DIR}/shared OPTIONAL)
 
 	list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../libs)
 
