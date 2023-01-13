@@ -1,5 +1,5 @@
 # Open Ephys common library template
-This repository contains a template for building libraries intended to be used by plugins for the [Open Ephys GUI](https://github.com/open-ephys/plugin-GUI). Information on the plugin architecture can be found on [our wiki](https://open-ephys.atlassian.net/wiki/spaces/OEW/pages/950363/Plugin+architecture).
+This repository contains a template for building libraries intended to be used by plugins for the [Open Ephys GUI](https://github.com/open-ephys/plugin-GUI). Information on the plugin architecture can be found on [our wiki](https://open-ephys.github.io/gui-docs/Developer-Guide/index.html).
 
 ## Creating a new library
 1. Rename the "CommonLib" folder to the name the library file will have

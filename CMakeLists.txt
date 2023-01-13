@@ -10,8 +10,9 @@ endif()
 get_filename_component(PROJECT_FOLDER ${CMAKE_CURRENT_SOURCE_DIR} ABSOLUTE)
 get_filename_component(COMMONLIB_NAME ${PROJECT_FOLDER} NAME)
 
+set(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architecture for Mac OS X" FORCE)
+
 project(OE_COMMONLIB_${COMMONLIB_NAME})
-set(CMAKE_SHARED_LIBRARY_PREFIX "")
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 	set(LINUX 1)
 	if(NOT CMAKE_BUILD_TYPE)
@@ -25,25 +26,31 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
 	$<$<PLATFORM_ID:Linux>:JUCE_DISABLE_NATIVE_FILECHOOSERS=1>
 	$<$<CONFIG:Debug>:DEBUG=1>
 	$<$<CONFIG:Debug>:_DEBUG=1>
-	$<$<CONFIG:Release>:NDEBUG=1>
+	$<$<NOT:$<CONFIG:Debug>>:NDEBUG=1>
 	)
-	
+
 set(SOURCE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/Source)
 file(GLOB_RECURSE SRC_FILES LIST_DIRECTORIES false "${SOURCE_PATH}/*.cpp")
 file(GLOB_RECURSE HEADER_FILES LIST_DIRECTORIES false "${SOURCE_PATH}/*.h")
 list(APPEND SRC_FILES ${HEADER_FILES})
 set(GUI_COMMONLIB_DIR ${GUI_BASE_DIR}/installed_libs)
 
-set(CONFIGURATION_FOLDER $<$<CONFIG:Debug>:Debug>$<$<NOT:$<CONFIG:Debug>>:Release>)
-
-list(APPEND CMAKE_PREFIX_PATH ${GUI_COMMONLIB_DIR} ${GUI_COMMONLIB_DIR}/${CONFIGURATION_FOLDER})
+list(APPEND CMAKE_PREFIX_PATH 
+	${GUI_COMMONLIB_DIR}
+	${GUI_COMMONLIB_DIR}/$<CONFIG>
+	${GUI_COMMONLIB_DIR}/Release # default to Release if, e.g., a RelWithDebInfo build of a library is not available
+	)
 
 add_library(${COMMONLIB_NAME} SHARED ${SRC_FILES})
 
-target_compile_features(${COMMONLIB_NAME} PUBLIC cxx_auto_type cxx_generalized_initializers)
-target_include_directories(${COMMONLIB_NAME} PUBLIC ${GUI_BASE_DIR}/JuceLibraryCode ${GUI_BASE_DIR}/JuceLibraryCode/modules ${GUI_BASE_DIR}/Plugins/Headers ${GUI_COMMONLIB_DIR}/include)
+target_compile_features(${COMMONLIB_NAME} PUBLIC cxx_auto_type cxx_generalized_initializers cxx_std_17)
+target_include_directories(${COMMONLIB_NAME} PUBLIC
+	${GUI_BASE_DIR}/JuceLibraryCode
+	${GUI_BASE_DIR}/JuceLibraryCode/modules
+	${GUI_BASE_DIR}/Plugins/Headers
+	${GUI_COMMONLIB_DIR}/include)
 
-set(GUI_BIN_DIR ${GUI_BASE_DIR}/Build/${CONFIGURATION_FOLDER})
+set(GUI_BIN_DIR ${GUI_BASE_DIR}/Build/$<CONFIG>)
 
 if (NOT CMAKE_LIBRARY_ARCHITECTURE)
 	if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -54,36 +61,42 @@ if (NOT CMAKE_LIBRARY_ARCHITECTURE)
 endif()
 
 install(TARGETS ${COMMONLIB_NAME}
-	LIBRARY DESTINATION ${GUI_COMMONLIB_DIR}/${CONFIGURATION_FOLDER}/lib/${CMAKE_LIBRARY_ARCHITECTURE}
-	CONFIGURATIONS ${CMAKE_CONFIGURATION_TYPES}
-	ARCHIVE DESTINATION ${GUI_COMMONLIB_DIR}/${CONFIGURATION_FOLDER}/lib/${CMAKE_LIBRARY_ARCHITECTURE}
-	CONFIGURATIONS ${CMAKE_CONFIGURATION_TYPES}
+	LIBRARY DESTINATION ${GUI_COMMONLIB_DIR}/$<CONFIG>/lib/${CMAKE_LIBRARY_ARCHITECTURE} # .so, .dylib files
+	ARCHIVE DESTINATION ${GUI_COMMONLIB_DIR}/$<CONFIG>/lib/${CMAKE_LIBRARY_ARCHITECTURE} # .lib files
+	RUNTIME DESTINATION ${GUI_COMMONLIB_DIR}/$<CONFIG>/bin/${CMAKE_LIBRARY_ARCHITECTURE} # .dll files
 	)
 install(FILES ${HEADER_FILES} DESTINATION ${GUI_COMMONLIB_DIR}/include)
-	
+
 #Libraries and compiler options
 if(MSVC)
 	target_link_libraries(${COMMONLIB_NAME} ${GUI_BIN_DIR}/open-ephys.lib)
-	target_compile_options(${COMMONLIB_NAME} PRIVATE /sdl-)
-	
-	install(TARGETS ${COMMONLIB_NAME} RUNTIME DESTINATION ${GUI_BIN_DIR}/shared CONFIGURATIONS ${CMAKE_CONFIGURATION_TYPES})
-	install(TARGETS ${COMMONLIB_NAME} RUNTIME DESTINATION ${GUI_COMMONLIB_DIR}/${CONFIGURATION_FOLDER}/bin/${CMAKE_LIBRARY_ARCHITECTURE} CONFIGURATIONS ${CMAKE_CONFIGURATION_TYPES})
-	list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../libs)
+	target_compile_options(${COMMONLIB_NAME} PRIVATE /sdl- /W0)
+
+	install(TARGETS ${COMMONLIB_NAME} RUNTIME DESTINATION ${GUI_BIN_DIR}/shared)
+
+	list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/windows)
+
 elseif(LINUX)
 	target_link_libraries(${COMMONLIB_NAME} GL X11 Xext Xinerama asound dl freetype pthread rt)
 	set_property(TARGET ${COMMONLIB_NAME} APPEND_STRING PROPERTY LINK_FLAGS
-		"-fvisibility=hidden -fPIC -rdynamic -Wl,-rpath,'$$ORIGIN'")
+		"-fvisibility=hidden -fPIC -rdynamic -Wl,-rpath,'$ORIGIN'")
 	target_compile_options(${COMMONLIB_NAME} PRIVATE -fPIC -rdynamic)
 	target_compile_options(${COMMONLIB_NAME} PRIVATE -O3) #enable optimization for linux debug
 	
 	install(TARGETS ${COMMONLIB_NAME} LIBRARY DESTINATION ${GUI_BIN_DIR}/shared)
+
+	list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/linux)
+
 elseif(APPLE)
 	set_target_properties(${COMMONLIB_NAME} PROPERTIES BUNDLE FALSE)
 	set_property(TARGET ${COMMONLIB_NAME} APPEND_STRING PROPERTY LINK_FLAGS
 	"-undefined dynamic_lookup")
 
-	install(TARGETS ${COMMONLIB_NAME} DESTINATION $ENV{HOME}/Library/Application\ Support/open-ephys/shared)
-	list(APPEND CMAKE_PREFIX_PATH /opt/local)
+	add_custom_command(TARGET ${COMMONLIB_NAME} POST_BUILD COMMAND
+	install_name_tool -change "/usr/local/opt/fftw/lib/libfftw3.3.dylib" "@loader_path/libfftw3.3.dylib" $<TARGET_FILE:${COMMONLIB_NAME}>)
+
+	install(TARGETS ${COMMONLIB_NAME} DESTINATION $ENV{HOME}/Library/Application\ Support/open-ephys/shared-api8)
+	list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/macos)
 endif()
 
 #create filters for vs and xcode
@@ -103,3 +116,13 @@ endforeach()
 #
 #target_link_libraries(${COMMONLIB_NAME} ${LIBNAME_LIBRARIES})
 #target_include_directories(${COMMONLIB_NAME} PRIVATE ${LIBNAME_INCLUDE_DIRS})
+
+
+#copy the dependencies when installing
+# if (MSVC)
+# 	install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/windows/bin/ DESTINATION ${GUI_BIN_DIR}/shared)
+# elseif(LINUX)
+# 	install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/linux/bin/ DESTINATION ${GUI_BIN_DIR}/shared)
+# elseif(APPLE)
+# 	install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libs/macos/bin/ DESTINATION $ENV{HOME}/Library/Application\ Support/open-ephys/shared-api8)
+# endif()
